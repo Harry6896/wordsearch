@@ -348,8 +348,7 @@ Australia,Sydney`;
             
             // Get KDP format
             const kdpFormat = document.querySelector('input[name="kdpFormat"]:checked').value;
-            const title = document.getElementById('puzzleTitle').value || 'Word Search Puzzles';
-            const instructions = document.getElementById('instructions').value;
+            const title = 'Word Search Puzzles';
             
             // Set document size based on KDP format
             if (kdpFormat === '6x9') {
@@ -369,14 +368,9 @@ Australia,Sydney`;
                 doc.setFontSize(16);
                 doc.text(`Puzzle #${index + 1}`, 20, 40);
                 
-                // Add instructions
-                doc.setFontSize(12);
-                const splitInstructions = doc.splitTextToSize(instructions, doc.internal.pageSize.getWidth() - 40);
-                doc.text(splitInstructions, 20, 50);
-                
                 // Add word list
                 doc.setFontSize(12);
-                doc.text('Find these words:', 20, 80);
+                doc.text('Find these words:', 20, 50);
                 
                 // Format word list
                 const wordsPerLine = 4;
@@ -389,7 +383,7 @@ Australia,Sydney`;
                 });
                 
                 const splitWords = doc.splitTextToSize(wordLine, doc.internal.pageSize.getWidth() - 40);
-                doc.text(splitWords, 25, 90);
+                doc.text(splitWords, 25, 60);
                 
                 // Add puzzle grid
                 const gridSizeMM = 120; // Larger grid size
