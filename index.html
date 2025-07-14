@@ -475,12 +475,17 @@ function exportToPDF() {
                                     cellSize / 2
                                 );
                             } else {
-                                // Diagonal
-                                const centerX = (startX + endX) / 2 + cellSize / 2;
-                                const centerY = (startY + endY) / 2 + cellSize / 2;
-                                const width = Math.abs(endX - startX) + cellSize + 2 * padding;
-                                const height = Math.abs(endY - startY) + cellSize + 2 * padding;
-                                doc.ellipse(centerX, centerY, width / 2, height / 2);
+                                // Diagonal (cross words)
+                                // Calculate the center of the word
+                                const wordLen = word.length;
+                                const midX = x + dir.x * ((wordLen - 1) / 2);
+                                const midY = y + dir.y * ((wordLen - 1) / 2);
+                                const centerX = gridX + midX * cellSize + cellSize / 2;
+                                const centerY = gridY + midY * cellSize + cellSize / 2;
+                                // Calculate ellipse radii
+                                const rx = (Math.abs(endX - startX) + cellSize + 2 * padding) / 2;
+                                const ry = (Math.abs(endY - startY) + cellSize + 2 * padding) / 2;
+                                doc.ellipse(centerX, centerY, rx, ry);
                             }
 
                             found = true;
