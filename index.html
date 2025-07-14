@@ -451,32 +451,37 @@ function exportToPDF() {
                             const startY = gridY + y * cellSize;
                             const endX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
                             const endY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
-                            const padding = 0; // Lowest padding
+                            const padding = 0; // No extra space
 
-                            if (dir.x === 0 || dir.y === 0) {
-                                // Horizontal or Vertical word → rounded rectangle
-                                const xPos = Math.min(startX, endX) - padding;
-                                const yPos = Math.min(startY, endY) - padding;
-                                const width = Math.abs(endX - startX) + cellSize + padding * 2;
-                                const height = Math.abs(endY - startY) + cellSize + padding * 2;
-
+                            if (dir.x === 0) {
+                                // Vertical
                                 doc.roundedRect(
-                                    xPos,
-                                    yPos,
-                                    width,
-                                    height,
+                                    startX,
+                                    Math.min(startY, endY),
+                                    cellSize,
+                                    Math.abs(endY - startY) + cellSize,
+                                    cellSize / 2.5,
+                                    cellSize / 2.5
+                                );
+                            } else if (dir.y === 0) {
+                                // Horizontal
+                                doc.roundedRect(
+                                    Math.min(startX, endX),
+                                    startY,
+                                    Math.abs(endX - startX) + cellSize,
+                                    cellSize,
                                     cellSize / 2.5,
                                     cellSize / 2.5
                                 );
                             } else {
-                                // Diagonal word → ellipse
+                                // Diagonal
+                                // Calculate ellipse radii based on distance
                                 const midX = x + dir.x * ((word.length - 1) / 2);
                                 const midY = y + dir.y * ((word.length - 1) / 2);
                                 const centerX = gridX + midX * cellSize + cellSize / 2;
                                 const centerY = gridY + midY * cellSize + cellSize / 2;
-
-                                const rx = (word.length * cellSize) / 2 + padding;
-                                const ry = cellSize / 2 + padding;
+                                const rx = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2)) / 2 + cellSize / 2;
+                                const ry = cellSize / 2;
 
                                 doc.ellipse(centerX, centerY, rx, ry);
                             }
