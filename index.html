@@ -342,134 +342,125 @@ Australia,Sydney`;
             });
         }
         
-        function exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            // Get KDP format
-            const kdpFormat = document.querySelector('input[name="kdpFormat"]:checked').value;
-            const title = 'Word Search Puzzles';
-            
-            // Set document size based on KDP format
-            if (kdpFormat === '6x9') {
-                doc.deletePage(1);
-                doc.addPage([152.4, 228.6], 'portrait'); // 6x9 inches in mm
+<script>
+function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Set a default title
+    const title = 'Word Search Puzzles';
+
+    // Get KDP format
+    const kdpFormat = document.querySelector('input[name="kdpFormat"]:checked').value;
+
+    // Set document size based on KDP format
+    if (kdpFormat === '6x9') {
+        doc.deletePage(1);
+        doc.addPage([152.4, 228.6], 'portrait'); // 6x9 inches in mm
+    }
+
+    // Create puzzle pages
+    puzzles.forEach((puzzle, index) => {
+        if (index > 0) doc.addPage();
+
+        // Add title
+        doc.setFontSize(20);
+        doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+
+        // Add puzzle title
+        doc.setFontSize(16);
+        doc.text(`Puzzle #${index + 1}`, 20, 35);
+
+        // Add word list
+        doc.setFontSize(12);
+        doc.text('Find these words:', 20, 50);
+
+        const wordsPerLine = 4;
+        let wordLine = '';
+        puzzle.words.forEach((word, i) => {
+            wordLine += word.toUpperCase();
+            if (i < puzzle.words.length - 1) {
+                wordLine += (i % wordsPerLine === wordsPerLine - 1) ? '\n' : ', ';
             }
-            
-            // Create puzzle pages
-            puzzles.forEach((puzzle, index) => {
-                if (index > 0) doc.addPage();
-                
-                // Add title
-                doc.setFontSize(20);
-                doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-                
-                // Add puzzle title
-                doc.setFontSize(16);
-                doc.text(`Puzzle #${index + 1}`, 20, 40);
-                
-                // Add word list
+        });
+
+        const splitWords = doc.splitTextToSize(wordLine, doc.internal.pageSize.getWidth() - 40);
+        doc.text(splitWords, 25, 60);
+
+        // Add puzzle grid
+        const gridSizeMM = 120;
+        const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
+        const gridY = 90;
+        const cellSize = gridSizeMM / gridSize;
+
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                const cellX = gridX + x * cellSize;
+                const cellY = gridY + y * cellSize;
                 doc.setFontSize(12);
-                doc.text('Find these words:', 20, 50);
-                
-                // Format word list
-                const wordsPerLine = 4;
-                let wordLine = '';
-                puzzle.words.forEach((word, i) => {
-                    wordLine += word;
-                    if (i < puzzle.words.length - 1) {
-                        wordLine += (i % wordsPerLine === wordsPerLine - 1) ? '\n' : ', ';
-                    }
-                });
-                
-                const splitWords = doc.splitTextToSize(wordLine, doc.internal.pageSize.getWidth() - 40);
-                doc.text(splitWords, 25, 60);
-                
-                // Add puzzle grid
-                const gridSizeMM = 120; // Larger grid size
-                const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
-                const gridY = 130;
-                
-                // Draw letters without cell borders
-                const cellSize = gridSizeMM / gridSize;
-                for (let y = 0; y < gridSize; y++) {
-                    for (let x = 0; x < gridSize; x++) {
-                        const cellX = gridX + x * cellSize;
-                        const cellY = gridY + y * cellSize;
-                        
-                        // Add letter
-                        doc.setFontSize(12); // Slightly larger font
-                        doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize/2, cellY + cellSize/2, { align: 'center', baseline: 'middle' });
-                    }
+                doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, { align: 'center', baseline: 'middle' });
+            }
+        }
+    });
+
+    // Create answer pages
+    puzzles.forEach((puzzle, index) => {
+        doc.addPage();
+
+        doc.setFontSize(20);
+        doc.text(`${title} - Answer Key`, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+
+        doc.setFontSize(16);
+        doc.text(`Puzzle #${index + 1} Answers`, 20, 35);
+
+        const gridSizeMM = 120;
+        const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
+        const gridY = 60;
+        const cellSize = gridSizeMM / gridSize;
+
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                const cellX = gridX + x * cellSize;
+                const cellY = gridY + y * cellSize;
+
+                if (puzzle.answerGrid[y][x]) {
+                    doc.setFillColor(200, 255, 200);
+                    doc.rect(cellX, cellY, cellSize, cellSize, 'F');
                 }
-            });
-            
-            // Create answer pages
-            puzzles.forEach((puzzle, index) => {
-                doc.addPage();
-                
-                // Add title
-                doc.setFontSize(20);
-                doc.text(`${title} - Answer Key`, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-                
-                // Add puzzle title
-                doc.setFontSize(16);
-                doc.text(`Puzzle #${index + 1} Answers`, 20, 40);
-                
-                // Add answer grid
-                const gridSizeMM = 120;
-                const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
-                const gridY = 60;
-                
-                // Draw letters with highlights but no borders
-                const cellSize = gridSizeMM / gridSize;
-                for (let y = 0; y < gridSize; y++) {
-                    for (let x = 0; x < gridSize; x++) {
-                        const cellX = gridX + x * cellSize;
-                        const cellY = gridY + y * cellSize;
-                        
-                        // Highlight answer cells
-                        if (puzzle.answerGrid[y][x]) {
-                            doc.setFillColor(200, 255, 200);
-                            doc.rect(cellX, cellY, cellSize, cellSize, 'F');
-                        }
-                        
-                        // Add letter
-                        doc.setFontSize(12);
-                        doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize/2, cellY + cellSize/2, { align: 'center', baseline: 'middle' });
-                    }
-                }
-                
-                // Add word list below grid
+
                 doc.setFontSize(12);
-                doc.text('Words found:', 20, gridY + gridSizeMM + 20);
-                
-                // Format word list in rounded rectangle format
-                const wordsPerLine = 3;
-                let currentX = 20;
-                let currentY = gridY + gridSizeMM + 30;
-                
-                puzzle.words.forEach((word, i) => {
-                    if (i > 0 && i % wordsPerLine === 0) {
-                        currentX = 20;
-                        currentY += 15;
-                    }
-                    
-                    // Draw rounded rectangle
-                    const wordWidth = doc.getTextWidth(word) + 10;
-                    doc.setFillColor(230, 230, 230);
-                    doc.roundedRect(currentX, currentY - 8, wordWidth, 12, 6, 6, 'F');
-                    
-                    // Add word text
-                    doc.setTextColor(0, 0, 0);
-                    doc.text(word, currentX + 5, currentY);
-                    
-                    currentX += wordWidth + 10;
-                });
-            });
-            
-            // Save PDF
-            doc.save('word-search-puzzles.pdf');
+                doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, { align: 'center', baseline: 'middle' });
+            }
+        }
+
+        doc.setFontSize(12);
+        doc.text('Words found:', 20, gridY + gridSizeMM + 20);
+
+        const wordsPerLine = 3;
+        let currentX = 20;
+        let currentY = gridY + gridSizeMM + 30;
+
+        puzzle.words.forEach((word, i) => {
+            if (i > 0 && i % wordsPerLine === 0) {
+                currentX = 20;
+                currentY += 15;
+            }
+
+            const wordUpper = word.toUpperCase();
+            const wordWidth = doc.getTextWidth(wordUpper) + 10;
+
+            doc.setFillColor(230, 230, 230);
+            doc.roundedRect(currentX, currentY - 8, wordWidth, 12, 6, 6, 'F');
+
+            doc.setTextColor(0, 0, 0);
+            doc.text(wordUpper, currentX + 5, currentY);
+
+            currentX += wordWidth + 10;
+        });
+    });
+
+    doc.save('word-search-puzzles.pdf');
+}
         }
     </script>
 <p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;display:inline-block;margin-right:3px;filter:brightness(0) invert(1);"><a href="https://enzostvs-deepsite.hf.space" style="color: #fff;text-decoration: underline;" target="_blank" >DeepSite</a> - 🧬 <a href="https://enzostvs-deepsite.hf.space?remix=MusicHarry/king" style="color: #fff;text-decoration: underline;" target="_blank" >Remix</a></p></body>
