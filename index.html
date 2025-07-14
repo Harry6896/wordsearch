@@ -362,34 +362,14 @@ function exportToPDF() {
     puzzles.forEach((puzzle, index) => {
         if (index > 0) doc.addPage();
 
-        // Add title
-        doc.setFontSize(20);
-        doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-
         // Add puzzle title
         doc.setFontSize(16);
-        doc.text(`Puzzle #${index + 1}`, 20, 35);
-
-        // Add word list
-        doc.setFontSize(12);
-        doc.text('Find these words:', 20, 50);
-
-        const wordsPerLine = 4;
-        let wordLine = '';
-        puzzle.words.forEach((word, i) => {
-            wordLine += word.toUpperCase();
-            if (i < puzzle.words.length - 1) {
-                wordLine += (i % wordsPerLine === wordsPerLine - 1) ? '\n' : ', ';
-            }
-        });
-
-        const splitWords = doc.splitTextToSize(wordLine, doc.internal.pageSize.getWidth() - 40);
-        doc.text(splitWords, 25, 60);
+        doc.text(`Puzzle #${index + 1}`, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
 
         // Add puzzle grid
         const gridSizeMM = 120;
         const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
-        const gridY = 90;
+        const gridY = 30;
         const cellSize = gridSizeMM / gridSize;
 
         for (let y = 0; y < gridSize; y++) {
@@ -400,6 +380,20 @@ function exportToPDF() {
                 doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, { align: 'center', baseline: 'middle' });
             }
         }
+
+        // Add word list below grid, centered, multiple lines
+        doc.setFontSize(14);
+        const wordsPerLine = 6;
+        let wordLines = [];
+        for (let i = 0; i < puzzle.words.length; i += wordsPerLine) {
+            wordLines.push(
+                puzzle.words.slice(i, i + wordsPerLine).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('    ')
+            );
+        }
+        const wordListY = gridY + gridSizeMM + 15;
+        wordLines.forEach((line, idx) => {
+            doc.text(line, doc.internal.pageSize.getWidth() / 2, wordListY + idx * 12, { align: 'center' });
+        });
     });
 
     // Create answer pages
