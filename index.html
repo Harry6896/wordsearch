@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Word Search Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -38,6 +38,16 @@
             background-color: #bbf7d0;
             border-radius: 6px;
         }
+        @media (max-width: 768px) {
+            .word-cell {
+                width: 25px;
+                height: 25px;
+                font-size: 0.8rem;
+            }
+            .puzzle-container {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -55,23 +65,27 @@
                     <label class="block text-gray-700 mb-2">Upload CSV File</label>
                     <input type="file" id="csvFile" accept=".csv" class="w-full px-3 py-2 border border-gray-300 rounded-md">
                 </div>
+                
                 <div class="mb-4">
                     <label class="block text-gray-700 mb-2">Or Paste CSV Content</label>
                     <textarea id="csvInput" rows="8" class="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm" placeholder="Enter words separated by commas. Leave a blank line to start a new puzzle."></textarea>
                 </div>
+                
                 <div class="flex flex-wrap gap-2">
                     <button id="generateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition">Generate Puzzles</button>
                     <button id="sampleBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md transition">Load Sample</button>
                     <button id="clearBtn" class="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-md transition">Clear All</button>
                 </div>
+                
                 <div class="mt-4 text-sm text-gray-600">
                     <p><span class="font-semibold">Note:</span> Separate words with commas. Blank lines create new puzzles.</p>
                 </div>
             </div>
-
-            <!-- Export Section -->
+            
+            <!-- Output Options -->
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <h2 class="text-2xl font-semibold text-gray-800 mb-4">Export Options</h2>
+                
                 <div class="mb-6">
                     <label class="block text-gray-700 mb-2">KDP Format</label>
                     <div class="grid grid-cols-2 gap-4">
@@ -91,6 +105,17 @@
                         </div>
                     </div>
                 </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Puzzle Title</label>
+                    <input type="text" id="puzzleTitle" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="My Word Search Puzzle">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Include Instructions</label>
+                    <textarea id="instructions" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Find the words hidden in the puzzle...">Find the words hidden in the puzzle. Words can be horizontal, vertical, or diagonal, and may be forwards or backwards.</textarea>
+                </div>
+                
                 <button id="exportBtn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-md text-lg font-medium transition flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -99,266 +124,369 @@
                 </button>
             </div>
         </div>
-
-        <!-- Preview -->
+        
+        <!-- Preview Section -->
         <div id="previewSection" class="hidden">
             <h2 class="text-2xl font-semibold text-gray-800 mb-6">Preview</h2>
             <div id="puzzlesContainer" class="space-y-12"></div>
         </div>
     </div>
 
-<script>
-let puzzles = [];
-const gridSize = 15;
-const directions = [
-    {x: 1, y: 0}, {x: 0, y: 1}, {x: 1, y: 1}, {x: -1, y: 1}
-];
-
-const csvFileInput = document.getElementById('csvFile');
-const csvInput = document.getElementById('csvInput');
-const generateBtn = document.getElementById('generateBtn');
-const sampleBtn = document.getElementById('sampleBtn');
-const clearBtn = document.getElementById('clearBtn');
-const exportBtn = document.getElementById('exportBtn');
-const previewSection = document.getElementById('previewSection');
-const puzzlesContainer = document.getElementById('puzzlesContainer');
-
-generateBtn.addEventListener('click', generatePuzzles);
-sampleBtn.addEventListener('click', loadSampleData);
-clearBtn.addEventListener('click', clearAll);
-exportBtn.addEventListener('click', exportToPDF);
-csvFileInput.addEventListener('change', handleFileUpload);
-
-function handleFileUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        csvInput.value = e.target.result;
-        generatePuzzles();
-    };
-    reader.readAsText(file);
-}
-
-function loadSampleData() {
-    csvInput.value = `Letter,Clock,Lamp,Pencil,Paper,Mirror
-Curtain,Chair,Notebook,Envelope,Window
-Book,Shelf,Pen,Desk`;
-    generatePuzzles();
-}
-
-function clearAll() {
-    csvInput.value = '';
-    csvFileInput.value = '';
-    puzzles = [];
-    previewSection.classList.add('hidden');
-    puzzlesContainer.innerHTML = '';
-}
-
-function generatePuzzles() {
-    const input = csvInput.value.trim();
-    if (!input) return alert('Please enter CSV data or upload a file');
-
-    const puzzleGroups = input.split(/\n\s*\n/);
-    puzzles = [];
-
-    puzzleGroups.forEach(group => {
-        const lines = group.split('\n').filter(line => line.trim() !== '');
-        const puzzleWords = [];
-        lines.forEach(line => {
-            const words = line.split(',').map(w => w.trim().toUpperCase()).filter(w => w !== '');
-            puzzleWords.push(...words);
-        });
-
-        if (puzzleWords.length > 0) {
-            const puzzle = createPuzzle(puzzleWords);
-            puzzles.push(puzzle);
+    <script>
+        // Global variables
+        let puzzles = [];
+        const gridSize = 15;
+        const directions = [
+            {x: 1, y: 0},   // Horizontal right
+            {x: 0, y: 1},   // Vertical down
+            {x: 1, y: 1},   // Diagonal down-right
+            {x: -1, y: 1}   // Diagonal down-left
+        ];
+        
+        // DOM Elements
+        const csvFileInput = document.getElementById('csvFile');
+        const csvInput = document.getElementById('csvInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const sampleBtn = document.getElementById('sampleBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const previewSection = document.getElementById('previewSection');
+        const puzzlesContainer = document.getElementById('puzzlesContainer');
+        
+        // Event Listeners
+        generateBtn.addEventListener('click', generatePuzzles);
+        sampleBtn.addEventListener('click', loadSampleData);
+        clearBtn.addEventListener('click', clearAll);
+        exportBtn.addEventListener('click', exportToPDF);
+        csvFileInput.addEventListener('change', handleFileUpload);
+        
+        // Functions
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                csvInput.value = e.target.result;
+                generatePuzzles();
+            };
+            reader.readAsText(file);
         }
-    });
+        
+        function loadSampleData() {
+            const sampleCSV = `Animals,Colors,Fruits
+Tiger,Red,Apple
+Lion,Blue,Banana
+Bear,Green,Orange
+Elephant,Yellow,Mango
 
-    if (puzzles.length > 0) {
-        renderPuzzles();
-        previewSection.classList.remove('hidden');
-    } else {
-        alert('No valid puzzles found');
-    }
-}
-
-function createPuzzle(words) {
-    const grid = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
-    const answerGrid = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-    words.forEach(word => {
-        let placed = false, attempts = 0;
-        while (!placed && attempts < 100) {
-            attempts++;
-            const dir = directions[Math.floor(Math.random() * directions.length)];
-            const startX = Math.floor(Math.random() * gridSize);
-            const startY = Math.floor(Math.random() * gridSize);
-            const endX = startX + dir.x * (word.length - 1);
-            const endY = startY + dir.y * (word.length - 1);
-
-            if (endX < 0 || endX >= gridSize || endY < 0 || endY >= gridSize) continue;
-
-            let conflict = false;
-            for (let i = 0; i < word.length; i++) {
-                const x = startX + dir.x * i;
-                const y = startY + dir.y * i;
-                if (grid[y][x] && grid[y][x] !== word[i]) {
-                    conflict = true;
-                    break;
+Countries,Cities
+France,Paris
+Japan,Tokyo
+Canada,Toronto
+Australia,Sydney`;
+            
+            csvInput.value = sampleCSV;
+            generatePuzzles();
+        }
+        
+        function clearAll() {
+            csvInput.value = '';
+            csvFileInput.value = '';
+            puzzles = [];
+            previewSection.classList.add('hidden');
+            puzzlesContainer.innerHTML = '';
+        }
+        
+        function generatePuzzles() {
+            const input = csvInput.value.trim();
+            if (!input) {
+                alert('Please enter CSV data or upload a file');
+                return;
+            }
+            
+            // Split into puzzle groups based on blank lines
+            const puzzleGroups = input.split(/\n\s*\n/);
+            puzzles = [];
+            
+            puzzleGroups.forEach(group => {
+                const lines = group.split('\n').filter(line => line.trim() !== '');
+                if (lines.length === 0) return;
+                
+                const puzzleWords = [];
+                lines.forEach(line => {
+                    const words = line.split(',').map(w => w.trim()).filter(w => w !== '');
+                    puzzleWords.push(...words);
+                });
+                
+                if (puzzleWords.length > 0) {
+                    const puzzle = createPuzzle(puzzleWords);
+                    puzzles.push(puzzle);
+                }
+            });
+            
+            if (puzzles.length > 0) {
+                renderPuzzles();
+                previewSection.classList.remove('hidden');
+            } else {
+                alert('No valid puzzles found in the input');
+            }
+        }
+        
+        function createPuzzle(words) {
+            // Initialize grid
+            const grid = Array(gridSize).fill().map(() => Array(gridSize).fill(''));
+            const answerGrid = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
+            
+            // Place words in grid
+            words.forEach(word => {
+                if (word.length === 0) return;
+                
+                let placed = false;
+                let attempts = 0;
+                
+                while (!placed && attempts < 100) {
+                    attempts++;
+                    
+                    // Choose random direction
+                    const dir = directions[Math.floor(Math.random() * directions.length)];
+                    
+                    // Choose random starting position
+                    const startX = Math.floor(Math.random() * gridSize);
+                    const startY = Math.floor(Math.random() * gridSize);
+                    
+                    // Calculate end position
+                    const endX = startX + dir.x * (word.length - 1);
+                    const endY = startY + dir.y * (word.length - 1);
+                    
+                    // Check if word fits
+                    if (endX < 0 || endX >= gridSize || endY < 0 || endY >= gridSize) {
+                        continue;
+                    }
+                    
+                    // Check if placement conflicts
+                    let conflict = false;
+                    for (let i = 0; i < word.length; i++) {
+                        const x = startX + dir.x * i;
+                        const y = startY + dir.y * i;
+                        
+                        const currentChar = grid[y][x];
+                        if (currentChar !== '' && currentChar !== word[i]) {
+                            conflict = true;
+                            break;
+                        }
+                    }
+                    
+                    if (conflict) continue;
+                    
+                    // Place the word
+                    for (let i = 0; i < word.length; i++) {
+                        const x = startX + dir.x * i;
+                        const y = startY + dir.y * i;
+                        
+                        grid[y][x] = word[i];
+                        answerGrid[y][x] = true;
+                    }
+                    
+                    placed = true;
+                }
+            });
+            
+            // Fill empty cells with random letters
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    if (grid[y][x] === '') {
+                        grid[y][x] = letters[Math.floor(Math.random() * letters.length)];
+                    }
                 }
             }
-
-            if (conflict) continue;
-
-            for (let i = 0; i < word.length; i++) {
-                const x = startX + dir.x * i;
-                const y = startY + dir.y * i;
-                grid[y][x] = word[i];
-                answerGrid[y][x] = true;
+            
+            return {
+                words: [...words],
+                grid: grid,
+                answerGrid: answerGrid
+            };
+        }
+        
+        function renderPuzzles() {
+            puzzlesContainer.innerHTML = '';
+            
+            puzzles.forEach((puzzle, index) => {
+                const puzzleElement = document.createElement('div');
+                puzzleElement.className = 'bg-puzzle-100 rounded-xl p-6 shadow-md';
+                puzzleElement.innerHTML = `
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Puzzle #${index + 1}</h3>
+                    <div class="puzzle-container flex flex-col md:flex-row gap-8">
+                        <div class="flex-1">
+                            <h4 class="font-medium text-gray-700 mb-3">Word Search</h4>
+                            <div class="grid grid-cols-${gridSize} gap-0 border border-gray-300 bg-white">
+                                ${puzzle.grid.map((row, y) => 
+                                    row.map((cell, x) => 
+                                        `<div class="word-cell" data-x="${x}" data-y="${y}">${cell}</div>`
+                                    ).join('')
+                                ).join('')}
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1">
+                            <h4 class="font-medium text-gray-700 mb-3">Word List</h4>
+                            <div class="answer-box bg-answer-100">
+                                ${puzzle.words.map(word => 
+                                    `<div class="inline-block bg-white rounded-lg px-4 py-2 m-2 shadow-sm">${word}</div>`
+                                ).join('')}
+                            </div>
+                            
+                            <h4 class="font-medium text-gray-700 mb-3 mt-6">Answer Key</h4>
+                            <div class="grid grid-cols-${gridSize} gap-0 border border-gray-300 bg-white">
+                                ${puzzle.grid.map((row, y) => 
+                                    row.map((cell, x) => 
+                                        `<div class="word-cell ${puzzle.answerGrid[y][x] ? 'highlight' : ''}" data-x="${x}" data-y="${y}">${cell}</div>`
+                                    ).join('')
+                                ).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                puzzlesContainer.appendChild(puzzleElement);
+            });
+        }
+        
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Get KDP format
+            const kdpFormat = document.querySelector('input[name="kdpFormat"]:checked').value;
+            const title = document.getElementById('puzzleTitle').value || 'Word Search Puzzles';
+            const instructions = document.getElementById('instructions').value;
+            
+            // Set document size based on KDP format
+            if (kdpFormat === '6x9') {
+                doc.deletePage(1);
+                doc.addPage([152.4, 228.6], 'portrait'); // 6x9 inches in mm
             }
-
-            placed = true;
-        }
-    });
-
-    for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-            if (!grid[y][x]) grid[y][x] = letters[Math.floor(Math.random() * letters.length)];
-        }
-    }
-
-    return { words, grid, answerGrid };
-}
-
-function renderPuzzles() {
-    puzzlesContainer.innerHTML = '';
-    puzzles.forEach((puzzle, index) => {
-        const div = document.createElement('div');
-        div.className = 'bg-puzzle-100 rounded-xl p-6 shadow-md';
-        div.innerHTML = `
-            <h3 class="text-xl font-semibold text-gray-800 mb-4">Puzzle #${index + 1}</h3>
-            <div class="grid grid-cols-${gridSize} gap-0 border border-gray-300 bg-white mb-4">
-                ${puzzle.grid.map(row => row.map(cell => `<div class="word-cell">${cell.toUpperCase()}</div>`).join('')).join('')}
-            </div>
-            <div class="text-gray-700 text-sm">Words: ${puzzle.words.map(w => `<span class="inline-block mx-1">${w}</span>`).join('')}</div>
-        `;
-        puzzlesContainer.appendChild(div);
-    });
-}
-
-function exportToPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const title = 'Word Search Puzzles';
-    const kdpFormat = document.querySelector('input[name="kdpFormat"]:checked').value;
-
-    if (kdpFormat === '6x9') {
-        doc.deletePage(1);
-        doc.addPage([152.4, 228.6], 'portrait');
-    }
-
-    puzzles.forEach((puzzle, index) => {
-        if (index > 0) doc.addPage();
-        doc.setFontSize(20);
-        doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-        doc.setFontSize(16);
-        doc.text(`Puzzle #${index + 1}`, 20, 35);
-
-        const gridSizeMM = 120;
-        const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
-        const gridY = 50;
-        const cellSize = gridSizeMM / gridSize;
-
-        for (let y = 0; y < gridSize; y++) {
-            for (let x = 0; x < gridSize; x++) {
-                const cellX = gridX + x * cellSize;
-                const cellY = gridY + y * cellSize;
+            
+            // Create puzzle pages
+            puzzles.forEach((puzzle, index) => {
+                if (index > 0) doc.addPage();
+                
+                // Add title
+                doc.setFontSize(20);
+                doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+                
+                // Add puzzle title
+                doc.setFontSize(16);
+                doc.text(`Puzzle #${index + 1}`, 20, 40);
+                
+                // Add instructions
                 doc.setFontSize(12);
-                doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, {
-                    align: 'center',
-                    baseline: 'middle'
+                const splitInstructions = doc.splitTextToSize(instructions, doc.internal.pageSize.getWidth() - 40);
+                doc.text(splitInstructions, 20, 50);
+                
+                // Add word list
+                doc.setFontSize(12);
+                doc.text('Find these words:', 20, 80);
+                
+                // Format word list
+                const wordsPerLine = 4;
+                let wordLine = '';
+                puzzle.words.forEach((word, i) => {
+                    wordLine += word;
+                    if (i < puzzle.words.length - 1) {
+                        wordLine += (i % wordsPerLine === wordsPerLine - 1) ? '\n' : ', ';
+                    }
                 });
-            }
-        }
-
-        doc.setFontSize(12);
-        let wordStartY = gridY + gridSizeMM + 15;
-        doc.text('Find these words:', 20, wordStartY);
-        wordStartY += 10;
-        let currentX = 20, currentY = wordStartY, maxWidth = doc.internal.pageSize.getWidth() - 20;
-
-        puzzle.words.forEach(word => {
-            const wordText = word.toUpperCase();
-            const wordWidth = doc.getTextWidth(wordText);
-            if (currentX + wordWidth > maxWidth) {
-                currentX = 20;
-                currentY += 10;
-            }
-            doc.text(wordText, currentX, currentY);
-            currentX += wordWidth + 10;
-        });
-    });
-
-    // Answer Keys
-    puzzles.forEach((puzzle, index) => {
-        doc.addPage();
-        doc.setFontSize(20);
-        doc.text(`${title} - Answer Key`, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-        doc.setFontSize(16);
-        doc.text(`Puzzle #${index + 1} Answers`, 20, 35);
-
-        const gridSizeMM = 120;
-        const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
-        const gridY = 50;
-        const cellSize = gridSizeMM / gridSize;
-
-        for (let y = 0; y < gridSize; y++) {
-            for (let x = 0; x < gridSize; x++) {
-                const cellX = gridX + x * cellSize;
-                const cellY = gridY + y * cellSize;
-
-                if (puzzle.answerGrid[y][x]) {
-                    doc.setFillColor(200, 255, 200);
-                    doc.rect(cellX, cellY, cellSize, cellSize, 'F');
+                
+                const splitWords = doc.splitTextToSize(wordLine, doc.internal.pageSize.getWidth() - 40);
+                doc.text(splitWords, 25, 90);
+                
+                // Add puzzle grid
+                const gridSizeMM = 120; // Larger grid size
+                const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
+                const gridY = 130;
+                
+                // Draw letters without cell borders
+                const cellSize = gridSizeMM / gridSize;
+                for (let y = 0; y < gridSize; y++) {
+                    for (let x = 0; x < gridSize; x++) {
+                        const cellX = gridX + x * cellSize;
+                        const cellY = gridY + y * cellSize;
+                        
+                        // Add letter
+                        doc.setFontSize(12); // Slightly larger font
+                        doc.text(puzzle.grid[y][x], cellX + cellSize/2, cellY + cellSize/2, { align: 'center', baseline: 'middle' });
+                    }
                 }
-
+            });
+            
+            // Create answer pages
+            puzzles.forEach((puzzle, index) => {
+                doc.addPage();
+                
+                // Add title
+                doc.setFontSize(20);
+                doc.text(`${title} - Answer Key`, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+                
+                // Add puzzle title
+                doc.setFontSize(16);
+                doc.text(`Puzzle #${index + 1} Answers`, 20, 40);
+                
+                // Add answer grid
+                const gridSizeMM = 120;
+                const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
+                const gridY = 60;
+                
+                // Draw letters with highlights but no borders
+                const cellSize = gridSizeMM / gridSize;
+                for (let y = 0; y < gridSize; y++) {
+                    for (let x = 0; x < gridSize; x++) {
+                        const cellX = gridX + x * cellSize;
+                        const cellY = gridY + y * cellSize;
+                        
+                        // Highlight answer cells
+                        if (puzzle.answerGrid[y][x]) {
+                            doc.setFillColor(200, 255, 200);
+                            doc.rect(cellX, cellY, cellSize, cellSize, 'F');
+                        }
+                        
+                        // Add letter
+                        doc.setFontSize(12);
+                        doc.text(puzzle.grid[y][x], cellX + cellSize/2, cellY + cellSize/2, { align: 'center', baseline: 'middle' });
+                    }
+                }
+                
+                // Add word list below grid
                 doc.setFontSize(12);
-                doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, {
-                    align: 'center',
-                    baseline: 'middle'
+                doc.text('Words found:', 20, gridY + gridSizeMM + 20);
+                
+                // Format word list in rounded rectangle format
+                const wordsPerLine = 3;
+                let currentX = 20;
+                let currentY = gridY + gridSizeMM + 30;
+                
+                puzzle.words.forEach((word, i) => {
+                    if (i > 0 && i % wordsPerLine === 0) {
+                        currentX = 20;
+                        currentY += 15;
+                    }
+                    
+                    // Draw rounded rectangle
+                    const wordWidth = doc.getTextWidth(word) + 10;
+                    doc.setFillColor(230, 230, 230);
+                    doc.roundedRect(currentX, currentY - 8, wordWidth, 12, 6, 6, 'F');
+                    
+                    // Add word text
+                    doc.setTextColor(0, 0, 0);
+                    doc.text(word, currentX + 5, currentY);
+                    
+                    currentX += wordWidth + 10;
                 });
-            }
+            });
+            
+            // Save PDF
+            doc.save('word-search-puzzles.pdf');
         }
-
-        // Word List
-        doc.setFontSize(12);
-        let wordStartY = gridY + gridSizeMM + 15;
-        doc.text('Words found:', 20, wordStartY);
-        wordStartY += 10;
-        let currentX = 20, currentY = wordStartY, maxWidth = doc.internal.pageSize.getWidth() - 20;
-
-        puzzle.words.forEach(word => {
-            const wordText = word.toUpperCase();
-            const wordWidth = doc.getTextWidth(wordText);
-
-            if (currentX + wordWidth > maxWidth) {
-                currentX = 20;
-                currentY += 10;
-            }
-
-            doc.setFillColor(230, 230, 230);
-            doc.roundedRect(currentX - 2, currentY - 7, wordWidth + 6, 10, 3, 3, 'F');
-            doc.setTextColor(0, 0, 0);
-            doc.text(wordText, currentX + 1, currentY);
-            currentX += wordWidth + 16;
-        });
-    });
-
-    doc.save('word-search-puzzles.pdf');
-}
-</script>
-</body>
+    </script>
+<p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;display:inline-block;margin-right:3px;filter:brightness(0) invert(1);"><a href="https://enzostvs-deepsite.hf.space" style="color: #fff;text-decoration: underline;" target="_blank" >DeepSite</a> - 🧬 <a href="https://enzostvs-deepsite.hf.space?remix=MusicHarry/king" style="color: #fff;text-decoration: underline;" target="_blank" >Remix</a></p></body>
 </html>
