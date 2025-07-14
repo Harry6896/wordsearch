@@ -215,7 +215,7 @@ Australia,Sydney`;
                 
                 const puzzleWords = [];
                 lines.forEach(line => {
-                    const words = line.split(',').map(w => w.trim()).filter(w => w !== '');
+                    const words = line.split(',').map(w => w.trim().toUpperCase()).filter(w => w !== '');
                     puzzleWords.push(...words);
                 });
                 
