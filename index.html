@@ -382,17 +382,17 @@ function exportToPDF() {
         }
 
         // Add word list below grid, centered, multiple lines
-        doc.setFontSize(14);
-        const wordsPerLine = 6;
+        doc.setFontSize(16);
+        const wordsPerLine = 6; // Adjust for your preferred layout
         let wordLines = [];
         for (let i = 0; i < puzzle.words.length; i += wordsPerLine) {
             wordLines.push(
-                puzzle.words.slice(i, i + wordsPerLine).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('    ')
+                puzzle.words.slice(i, i + wordsPerLine).join('    ')
             );
         }
-        const wordListY = gridY + gridSizeMM + 15;
+        const wordListY = gridY + gridSizeMM + 20; // Space below grid
         wordLines.forEach((line, idx) => {
-            doc.text(line, doc.internal.pageSize.getWidth() / 2, wordListY + idx * 12, { align: 'center' });
+            doc.text(line, doc.internal.pageSize.getWidth() / 2, wordListY + idx * 14, { align: 'center' });
         });
     });
 
