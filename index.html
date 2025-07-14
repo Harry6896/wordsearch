@@ -415,7 +415,7 @@ Australia,Sydney`;
                         
                         // Add letter
                         doc.setFontSize(12); // Slightly larger font
-                        doc.text(puzzle.grid[y][x], cellX + cellSize/2, cellY + cellSize/2, { align: 'center', baseline: 'middle' });
+                        doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize/2, cellY + cellSize/2, { align: 'center', baseline: 'middle' });
                     }
                 }
             });
@@ -452,7 +452,7 @@ Australia,Sydney`;
                         
                         // Add letter
                         doc.setFontSize(12);
-                        doc.text(puzzle.grid[y][x], cellX + cellSize/2, cellY + cellSize/2, { align: 'center', baseline: 'middle' });
+                        doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize/2, cellY + cellSize/2, { align: 'center', baseline: 'middle' });
                     }
                 }
                 
