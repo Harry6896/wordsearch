@@ -425,6 +425,18 @@ function exportToPDF() {
         doc.setDrawColor(0, 0, 0);
         doc.setLineWidth(0.8);
 
+        // Support all 8 directions
+        const directions = [
+            { x: 1, y: 0 },   // Horizontal right
+            { x: -1, y: 0 },  // Horizontal left
+            { x: 0, y: 1 },   // Vertical down
+            { x: 0, y: -1 },  // Vertical up
+            { x: 1, y: 1 },   // Diagonal down-right
+            { x: -1, y: 1 },  // Diagonal down-left
+            { x: 1, y: -1 },  // Diagonal up-right
+            { x: -1, y: -1 }  // Diagonal up-left
+        ];
+
         puzzle.words.forEach(rawWord => {
             const word = rawWord.toUpperCase();
             let found = false;
@@ -447,34 +459,34 @@ function exportToPDF() {
                         }
 
                         if (match) {
-                            const startX = gridX + x * cellSize;
-                            const startY = gridY + y * cellSize;
-                            const endX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
-                            const endY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
+                            // Pixel coordinates for start and end
+                            const startPixelX = gridX + x * cellSize;
+                            const startPixelY = gridY + y * cellSize;
+                            const endPixelX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
+                            const endPixelY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
 
-                            // Center of the word segment
-                            const centerX = (startX + endX) / 2 + cellSize / 2;
-                            const centerY = (startY + endY) / 2 + cellSize / 2;
+                            // Center of the word
+                            const centerX = (startPixelX + endPixelX) / 2 + cellSize / 2;
+                            const centerY = (startPixelY + endPixelY) / 2 + cellSize / 2;
 
-                            // Length of the word segment
-                            const dx = endX - startX;
-                            const dy = endY - startY;
-                            const wordLengthPixels = Math.sqrt(dx * dx + dy * dy);
+                            // Segment length
+                            const dx = endPixelX - startPixelX;
+                            const dy = endPixelY - startPixelY;
+                            const wordSegmentLength = Math.sqrt(dx * dx + dy * dy);
 
                             // Ellipse radii
+                            const rx = (wordSegmentLength / 2) + (cellSize / 2);
                             const ry = cellSize / 2;
-                            const rx = (wordLengthPixels / 2) + (cellSize / 2);
 
-                            // Rotation angle for diagonal/horizontal/vertical
-                            let angle = 0;
-                            if (dir.x !== 0 || dir.y !== 0) {
-                                angle = Math.atan2(dy, dx) * (180 / Math.PI);
-                            }
+                            // Rotation angle in degrees
+                            let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                            if (dir.x === 0 && dir.y !== 0) angle = 90;
+                            else if (dir.y === 0 && dir.x !== 0) angle = 0;
 
                             doc.save();
                             doc.translate(centerX, centerY);
                             doc.rotate(angle);
-                            doc.ellipse(0, 0, rx, ry);
+                            doc.ellipse(0, 0, rx, ry, 'S');
                             doc.restore();
 
                             found = true;
