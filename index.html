@@ -422,94 +422,69 @@ function exportToPDF() {
         }
 
         // Draw circles/ellipses for each answer word
-        doc.setDrawColor(0, 0, 0); // Black stroke color for highlights
-        doc.setLineWidth(0.8);     // Line thickness for highlights
+        doc.setDrawColor(0, 0, 0);
+doc.setLineWidth(0.8);
 
-        // Support all 8 directions
-        const directions = [
-            { x: 1, y: 0 },   // Horizontal right
-            { x: -1, y: 0 },  // Horizontal left
-            { x: 0, y: 1 },   // Vertical down
-            { x: 0, y: -1 },  // Vertical up
-            { x: 1, y: 1 },   // Diagonal down-right
-            { x: -1, y: 1 },  // Diagonal down-left
-            { x: 1, y: -1 },  // Diagonal up-right
-            { x: -1, y: -1 }  // Diagonal up-left
-        ];
+puzzle.words.forEach(rawWord => {
+    const word = rawWord.toUpperCase();
+    let found = false;
 
-        puzzle.words.forEach(rawWord => {
-            const word = rawWord.toUpperCase();
-            let found = false;
-
-            // Iterate through all possible directions
-            for (const dir of directions) {
-                // Iterate through each cell in the grid as a potential starting point
-                for (let y = 0; y < gridSize; y++) {
-                    for (let x = 0; x < gridSize; x++) {
-                        let match = true;
-                        // Check if the current word matches in this direction from (x,y)
-                        for (let i = 0; i < word.length; i++) {
-                            const nx = x + dir.x * i;
-                            const ny = y + dir.y * i;
-
-                            // Check bounds and character match
-                            if (
-                                nx < 0 || nx >= gridSize ||
-                                ny < 0 || ny >= gridSize ||
-                                puzzle.grid[ny][nx].toUpperCase() !== word[i]
-                            ) {
-                                match = false; // Mismatch or out of bounds
-                                break;         // Stop checking this direction
-                            }
-                        }
-
-                        // If a match is found for the word in this position and direction
-                        if (match) {
-                            // Calculate pixel coordinates for the start and end of the word's characters
-                            const startPixelX = gridX + x * cellSize;
-                            const startPixelY = gridY + y * cellSize;
-                            const endPixelX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
-                            const endPixelY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
-
-                            // Calculate the precise center of the word segment for ellipse positioning.
-                            const centerX = (startPixelX + endPixelX) / 2 + cellSize / 2;
-                            const centerY = (startPixelY + endPixelY) / 2 + cellSize / 2;
-
-                            // Calculate the length of the line segment connecting the centers of the start and end characters.
-                            const dx = endPixelX - startPixelX;
-                            const dy = endPixelY - startPixelY;
-                            const wordSegmentLength = Math.sqrt(dx * dx + dy * dy);
-
-                            // Calculate the radii for the ellipse to create a 'capsule' shape:
-                            const rx = (wordSegmentLength / 2) + (cellSize / 2);
-                            const ry = cellSize / 2;
-
-                            // Calculate the rotation angle in degrees for the ellipse to align with the word's direction.
-                            let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-                            // Snap the angle for perfectly horizontal or vertical words
-                            if (dir.x !== 0 && dir.y === 0) { // Horizontal
-                                angle = 0;
-                            } else if (dir.x === 0 && dir.y !== 0) { // Vertical
-                                angle = 90;
-                            }
-
-                            // --- Apply jsPDF transformations for drawing the rotated ellipse ---
-                            doc.save();
-                            doc.translate(centerX, centerY);
-                            doc.rotate(angle);
-                            doc.ellipse(0, 0, rx, ry, 'S');
-                            doc.restore();
-
-                            found = true;
-                            break;
-                        }
+    for (const dir of directions) {
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                let match = true;
+                for (let i = 0; i < word.length; i++) {
+                    const nx = x + dir.x * i;
+                    const ny = y + dir.y * i;
+                    if (
+                        nx < 0 || nx >= gridSize ||
+                        ny < 0 || ny >= gridSize ||
+                        puzzle.grid[ny][nx].toUpperCase() !== word[i]
+                    ) {
+                        match = false;
+                        break;
                     }
-                    if (found) break;
                 }
-                if (found) break;
+                if (match) {
+                    // Calculate pixel coordinates for the start and end of the word's characters
+                    const startPixelX = gridX + x * cellSize;
+                    const startPixelY = gridY + y * cellSize;
+                    const endPixelX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
+                    const endPixelY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
+
+                    // Center of the word segment
+                    const centerX = (startPixelX + endPixelX) / 2 + cellSize / 2;
+                    const centerY = (startPixelY + endPixelY) / 2 + cellSize / 2;
+
+                    // Length of the word segment
+                    const dx = endPixelX - startPixelX;
+                    const dy = endPixelY - startPixelY;
+                    const wordSegmentLength = Math.sqrt(dx * dx + dy * dy);
+
+                    // Ellipse radii
+                    const rx = (wordSegmentLength / 2) + (cellSize / 2);
+                    const ry = cellSize / 2;
+
+                    // Rotation angle
+                    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                    if (dir.x !== 0 && dir.y === 0) angle = 0;
+                    else if (dir.x === 0 && dir.y !== 0) angle = 90;
+
+                    doc.save();
+                    doc.translate(centerX, centerY);
+                    doc.rotate(angle);
+                    doc.ellipse(0, 0, rx, ry, 'S');
+                    doc.restore();
+
+                    found = true;
+                    break;
+                }
             }
-        });
+            if (found) break;
+        }
+        if (found) break;
+    }
+});
 
         // Add word list below grid, centered, multiple lines
         doc.setFontSize(14);
