@@ -430,6 +430,7 @@ function exportToPDF() {
             for (const dir of directions) {
                 for (let y = 0; y < gridSize; y++) {
                     for (let x = 0; x < gridSize; x++) {
+                        // Check if word matches at (x, y) in direction dir
                         let match = true;
                         for (let i = 0; i < word.length; i++) {
                             const nx = x + dir.x * i;
@@ -443,46 +444,47 @@ function exportToPDF() {
                                 break;
                             }
                         }
-                        if (match) {
-                            const startX = gridX + x * cellSize;
-                            const startY = gridY + y * cellSize;
-                            const endX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
-                            const endY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
-                            const padding = cellSize * 0.08;
+                        if (!match) continue;
 
-                            if (dir.x === 0) {
-                                // Vertical
-                                doc.roundedRect(
-                                    startX - padding,
-                                    Math.min(startY, endY) - padding,
-                                    cellSize + 2 * padding,
-                                    Math.abs(endY - startY) + cellSize + 2 * padding,
-                                    cellSize / 2.5,
-                                    cellSize / 2.5
-                                );
-                            } else if (dir.y === 0) {
-                                // Horizontal
-                                doc.roundedRect(
-                                    Math.min(startX, endX) - padding,
-                                    startY - padding,
-                                    Math.abs(endX - startX) + cellSize + 2 * padding,
-                                    cellSize + 2 * padding,
-                                    cellSize / 2.5,
-                                    cellSize / 2.5
-                                );
-                            } else {
-                                // Diagonal
-                                const midX = x + dir.x * ((word.length - 1) / 2);
-                                const midY = y + dir.y * ((word.length - 1) / 2);
-                                const centerX = gridX + midX * cellSize + cellSize / 2;
-                                const centerY = gridY + midY * cellSize + cellSize / 2;
-                                const rx = (word.length * cellSize) / 2 + padding;
-                                const ry = cellSize / 2 + padding;
-                                doc.ellipse(centerX, centerY, rx, ry);
-                            }
-                            found = true;
-                            break;
+                        // Calculate bounding box and center
+                        const startX = gridX + x * cellSize;
+                        const startY = gridY + y * cellSize;
+                        const endX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
+                        const endY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
+                        const padding = cellSize * 0.06;
+
+                        if (dir.x === 0) {
+                            // Vertical
+                            doc.roundedRect(
+                                startX - padding,
+                                Math.min(startY, endY) - padding,
+                                cellSize + 2 * padding,
+                                Math.abs(endY - startY) + cellSize + 2 * padding,
+                                cellSize / 2.5,
+                                cellSize / 2.5
+                            );
+                        } else if (dir.y === 0) {
+                            // Horizontal
+                            doc.roundedRect(
+                                Math.min(startX, endX) - padding,
+                                startY - padding,
+                                Math.abs(endX - startX) + cellSize + 2 * padding,
+                                cellSize + 2 * padding,
+                                cellSize / 2.5,
+                                cellSize / 2.5
+                            );
+                        } else {
+                            // Diagonal
+                            const midX = x + dir.x * ((word.length - 1) / 2);
+                            const midY = y + dir.y * ((word.length - 1) / 2);
+                            const centerX = gridX + midX * cellSize + cellSize / 2;
+                            const centerY = gridY + midY * cellSize + cellSize / 2;
+                            const rx = (Math.abs(endX - startX) + cellSize + 2 * padding) / 2;
+                            const ry = (Math.abs(endY - startY) + cellSize + 2 * padding) / 2;
+                            doc.ellipse(centerX, centerY, rx, ry);
                         }
+                        found = true;
+                        break;
                     }
                     if (found) break;
                 }
