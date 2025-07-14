@@ -411,44 +411,90 @@ function exportToPDF() {
         const gridY = 60;
         const cellSize = gridSizeMM / gridSize;
 
+        // Draw grid letters
         for (let y = 0; y < gridSize; y++) {
             for (let x = 0; x < gridSize; x++) {
                 const cellX = gridX + x * cellSize;
                 const cellY = gridY + y * cellSize;
-
-                if (puzzle.answerGrid[y][x]) {
-                    doc.setFillColor(200, 255, 200);
-                    doc.rect(cellX, cellY, cellSize, cellSize, 'F');
-                }
-
                 doc.setFontSize(12);
                 doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, { align: 'center', baseline: 'middle' });
             }
         }
 
-        doc.setFontSize(12);
-        doc.text('Words found:', 20, gridY + gridSizeMM + 20);
+        // Draw circles/ellipses for each answer word
+        doc.setDrawColor(0, 0, 255); // Blue
+        doc.setLineWidth(0.8);
 
-        const wordsPerLine = 3;
-        let currentX = 20;
-        let currentY = gridY + gridSizeMM + 30;
+        puzzle.words.forEach(word => {
+            // Find the word's position and direction in the grid
+            let found = false;
+            for (const dir of directions) {
+                for (let y = 0; y < gridSize; y++) {
+                    for (let x = 0; x < gridSize; x++) {
+                        let match = true;
+                        for (let i = 0; i < word.length; i++) {
+                            const nx = x + dir.x * i;
+                            const ny = y + dir.y * i;
+                            if (
+                                nx < 0 || nx >= gridSize ||
+                                ny < 0 || ny >= gridSize ||
+                                puzzle.grid[ny][nx] !== word[i]
+                            ) {
+                                match = false;
+                                break;
+                            }
+                        }
+                        if (match) {
+                            // Draw ellipse around the word
+                            const startX = gridX + x * cellSize;
+                            const startY = gridY + y * cellSize;
+                            const endX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
+                            const endY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
 
-        puzzle.words.forEach((word, i) => {
-            if (i > 0 && i % wordsPerLine === 0) {
-                currentX = 20;
-                currentY += 15;
+                            // Calculate ellipse center and size
+                            const centerX = (startX + endX) / 2 + cellSize / 2;
+                            const centerY = (startY + endY) / 2 + cellSize / 2;
+                            const width = Math.abs(endX - startX) + cellSize;
+                            const height = Math.abs(endY - startY) + cellSize;
+
+                            // Draw ellipse (or rounded rect for horizontal/vertical)
+                            if (dir.x === 0 || dir.y === 0) {
+                                // Horizontal or vertical: rounded rect
+                                doc.roundedRect(
+                                    Math.min(startX, endX),
+                                    Math.min(startY, endY),
+                                    width,
+                                    height,
+                                    cellSize / 2,
+                                    cellSize / 2
+                                );
+                            } else {
+                                // Diagonal: ellipse
+                                doc.ellipse(centerX, centerY, width / 2, height / 2);
+                            }
+
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
+                if (found) break;
             }
+        });
 
-            const wordUpper = word.toUpperCase();
-            const wordWidth = doc.getTextWidth(wordUpper) + 10;
-
-            doc.setFillColor(230, 230, 230);
-            doc.roundedRect(currentX, currentY - 8, wordWidth, 12, 6, 6, 'F');
-
-            doc.setTextColor(0, 0, 0);
-            doc.text(wordUpper, currentX + 5, currentY);
-
-            currentX += wordWidth + 10;
+        // Add word list below grid, centered, multiple lines
+        doc.setFontSize(14);
+        const wordsPerLine = 6;
+        let wordLines = [];
+        for (let i = 0; i < puzzle.words.length; i += wordsPerLine) {
+            wordLines.push(
+                puzzle.words.slice(i, i + wordsPerLine).join('    ')
+            );
+        }
+        const wordListY = gridY + gridSizeMM + 20;
+        wordLines.forEach((line, idx) => {
+            doc.text(line, doc.internal.pageSize.getWidth() / 2, wordListY + idx * 14, { align: 'center' });
         });
     });
 
