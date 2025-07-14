@@ -422,69 +422,62 @@ function exportToPDF() {
         }
 
         // Draw circles/ellipses for each answer word
-        doc.setDrawColor(0, 0, 0); // Black
+        doc.setDrawColor(0, 0, 0); // black stroke
         doc.setLineWidth(0.8);
 
-        puzzle.words.forEach(word => {
+        puzzle.words.forEach(rawWord => {
+            const word = rawWord.toUpperCase();
             let found = false;
+
             for (const dir of directions) {
                 for (let y = 0; y < gridSize; y++) {
                     for (let x = 0; x < gridSize; x++) {
-                        // Check if word matches at (x, y) in direction dir
                         let match = true;
+
                         for (let i = 0; i < word.length; i++) {
                             const nx = x + dir.x * i;
                             const ny = y + dir.y * i;
+
                             if (
                                 nx < 0 || nx >= gridSize ||
                                 ny < 0 || ny >= gridSize ||
-                                puzzle.grid[ny][nx] !== word[i]
+                                puzzle.grid[ny][nx].toUpperCase() !== word[i]
                             ) {
                                 match = false;
                                 break;
                             }
                         }
-                        if (!match) continue;
 
-                        // Calculate bounding box and center
-                        const startX = gridX + x * cellSize;
-                        const startY = gridY + y * cellSize;
-                        const endX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
-                        const endY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
-                        const padding = cellSize * 0.06;
+                        if (match) {
+                            const startX = gridX + x * cellSize;
+                            const startY = gridY + y * cellSize;
+                            const endX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
+                            const endY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
+                            const padding = cellSize * 0.1;
 
-                        if (dir.x === 0) {
-                            // Vertical
-                            doc.roundedRect(
-                                startX - padding,
-                                Math.min(startY, endY) - padding,
-                                cellSize + 2 * padding,
-                                Math.abs(endY - startY) + cellSize + 2 * padding,
-                                cellSize / 2.5,
-                                cellSize / 2.5
-                            );
-                        } else if (dir.y === 0) {
-                            // Horizontal
-                            doc.roundedRect(
-                                Math.min(startX, endX) - padding,
-                                startY - padding,
-                                Math.abs(endX - startX) + cellSize + 2 * padding,
-                                cellSize + 2 * padding,
-                                cellSize / 2.5,
-                                cellSize / 2.5
-                            );
-                        } else {
-                            // Diagonal
-                            const midX = x + dir.x * ((word.length - 1) / 2);
-                            const midY = y + dir.y * ((word.length - 1) / 2);
-                            const centerX = gridX + midX * cellSize + cellSize / 2;
-                            const centerY = gridY + midY * cellSize + cellSize / 2;
-                            const rx = (Math.abs(endX - startX) + cellSize + 2 * padding) / 2;
-                            const ry = (Math.abs(endY - startY) + cellSize + 2 * padding) / 2;
-                            doc.ellipse(centerX, centerY, rx, ry);
+                            if (dir.x === 0 || dir.y === 0) {
+                                // Horizontal or Vertical → roundedRect
+                                const xPos = Math.min(startX, endX) - padding;
+                                const yPos = Math.min(startY, endY) - padding;
+                                const w = Math.abs(endX - startX) + cellSize + padding * 2;
+                                const h = Math.abs(endY - startY) + cellSize + padding * 2;
+
+                                doc.roundedRect(xPos, yPos, w, h, cellSize / 2.5, cellSize / 2.5);
+                            } else {
+                                // Diagonal → ellipse
+                                const midX = x + dir.x * ((word.length - 1) / 2);
+                                const midY = y + dir.y * ((word.length - 1) / 2);
+                                const centerX = gridX + midX * cellSize + cellSize / 2;
+                                const centerY = gridY + midY * cellSize + cellSize / 2;
+                                const rx = (word.length * cellSize) / 2 + padding;
+                                const ry = cellSize / 2 + padding;
+
+                                doc.ellipse(centerX, centerY, rx, ry);
+                            }
+
+                            found = true;
+                            break;
                         }
-                        found = true;
-                        break;
                     }
                     if (found) break;
                 }
