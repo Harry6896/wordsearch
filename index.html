@@ -422,11 +422,10 @@ function exportToPDF() {
         }
 
         // Draw circles/ellipses for each answer word
-        doc.setDrawColor(0, 0, 255); // Blue
+        doc.setDrawColor(0, 0, 0); // Black
         doc.setLineWidth(0.8);
 
         puzzle.words.forEach(word => {
-            // Find the word's position and direction in the grid
             let found = false;
             for (const dir of directions) {
                 for (let y = 0; y < gridSize; y++) {
@@ -445,14 +444,11 @@ function exportToPDF() {
                             }
                         }
                         if (match) {
-                            // Draw outline around the word
                             const startX = gridX + x * cellSize;
                             const startY = gridY + y * cellSize;
                             const endX = gridX + (x + dir.x * (word.length - 1)) * cellSize;
                             const endY = gridY + (y + dir.y * (word.length - 1)) * cellSize;
-
-                            // Add padding so the outline is not too tight
-                            const padding = cellSize * 0.2;
+                            const padding = cellSize * 0.08;
 
                             if (dir.x === 0) {
                                 // Vertical
@@ -461,8 +457,8 @@ function exportToPDF() {
                                     Math.min(startY, endY) - padding,
                                     cellSize + 2 * padding,
                                     Math.abs(endY - startY) + cellSize + 2 * padding,
-                                    cellSize / 2,
-                                    cellSize / 2
+                                    cellSize / 2.5,
+                                    cellSize / 2.5
                                 );
                             } else if (dir.y === 0) {
                                 // Horizontal
@@ -471,23 +467,19 @@ function exportToPDF() {
                                     startY - padding,
                                     Math.abs(endX - startX) + cellSize + 2 * padding,
                                     cellSize + 2 * padding,
-                                    cellSize / 2,
-                                    cellSize / 2
+                                    cellSize / 2.5,
+                                    cellSize / 2.5
                                 );
                             } else {
-                                // Diagonal (cross words)
-                                // Calculate the center of the word
-                                const wordLen = word.length;
-                                const midX = x + dir.x * ((wordLen - 1) / 2);
-                                const midY = y + dir.y * ((wordLen - 1) / 2);
+                                // Diagonal
+                                const midX = x + dir.x * ((word.length - 1) / 2);
+                                const midY = y + dir.y * ((word.length - 1) / 2);
                                 const centerX = gridX + midX * cellSize + cellSize / 2;
                                 const centerY = gridY + midY * cellSize + cellSize / 2;
-                                // Calculate ellipse radii
-                                const rx = (Math.abs(endX - startX) + cellSize + 2 * padding) / 2;
-                                const ry = (Math.abs(endY - startY) + cellSize + 2 * padding) / 2;
+                                const rx = (word.length * cellSize) / 2 + padding;
+                                const ry = cellSize / 2 + padding;
                                 doc.ellipse(centerX, centerY, rx, ry);
                             }
-
                             found = true;
                             break;
                         }
