@@ -347,50 +347,28 @@ function exportToPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // Set a default title
     const title = 'Word Search Puzzles';
-
-    // Get KDP format
     const kdpFormat = document.querySelector('input[name="kdpFormat"]:checked').value;
 
-    // Set document size based on KDP format
     if (kdpFormat === '6x9') {
         doc.deletePage(1);
-        doc.addPage([152.4, 228.6], 'portrait'); // 6x9 inches in mm
+        doc.addPage([152.4, 228.6], 'portrait');
     }
 
-    // Create puzzle pages
+    // Puzzle Pages
     puzzles.forEach((puzzle, index) => {
         if (index > 0) doc.addPage();
 
-        // Add title
         doc.setFontSize(20);
         doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
 
-        // Add puzzle title
         doc.setFontSize(16);
         doc.text(`Puzzle #${index + 1}`, 20, 35);
 
-        // Add word list
-        doc.setFontSize(12);
-        doc.text('Find these words:', 20, 50);
-
-        const wordsPerLine = 4;
-        let wordLine = '';
-        puzzle.words.forEach((word, i) => {
-            wordLine += word.toUpperCase();
-            if (i < puzzle.words.length - 1) {
-                wordLine += (i % wordsPerLine === wordsPerLine - 1) ? '\n' : ', ';
-            }
-        });
-
-        const splitWords = doc.splitTextToSize(wordLine, doc.internal.pageSize.getWidth() - 40);
-        doc.text(splitWords, 25, 60);
-
-        // Add puzzle grid
+        // Puzzle Grid
         const gridSizeMM = 120;
         const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
-        const gridY = 90;
+        const gridY = 50;
         const cellSize = gridSizeMM / gridSize;
 
         for (let y = 0; y < gridSize; y++) {
@@ -398,12 +376,39 @@ function exportToPDF() {
                 const cellX = gridX + x * cellSize;
                 const cellY = gridY + y * cellSize;
                 doc.setFontSize(12);
-                doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, { align: 'center', baseline: 'middle' });
+                doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, {
+                    align: 'center',
+                    baseline: 'middle'
+                });
             }
         }
+
+        // Word List below the grid
+        doc.setFontSize(12);
+        let wordStartY = gridY + gridSizeMM + 15;
+        doc.text('Find these words:', 20, wordStartY);
+
+        wordStartY += 10;
+        let currentX = 20;
+        let currentY = wordStartY;
+        const maxWidth = doc.internal.pageSize.getWidth() - 20;
+        const spacing = 10;
+
+        puzzle.words.forEach((word) => {
+            const wordText = word.toUpperCase();
+            const wordWidth = doc.getTextWidth(wordText);
+
+            if (currentX + wordWidth > maxWidth) {
+                currentX = 20;
+                currentY += 10;
+            }
+
+            doc.text(wordText, currentX, currentY);
+            currentX += wordWidth + spacing;
+        });
     });
 
-    // Create answer pages
+    // Answer Key Pages
     puzzles.forEach((puzzle, index) => {
         doc.addPage();
 
@@ -415,7 +420,7 @@ function exportToPDF() {
 
         const gridSizeMM = 120;
         const gridX = (doc.internal.pageSize.getWidth() - gridSizeMM) / 2;
-        const gridY = 60;
+        const gridY = 50;
         const cellSize = gridSizeMM / gridSize;
 
         for (let y = 0; y < gridSize; y++) {
@@ -429,39 +434,44 @@ function exportToPDF() {
                 }
 
                 doc.setFontSize(12);
-                doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, { align: 'center', baseline: 'middle' });
+                doc.text(puzzle.grid[y][x].toUpperCase(), cellX + cellSize / 2, cellY + cellSize / 2, {
+                    align: 'center',
+                    baseline: 'middle'
+                });
             }
         }
 
+        // Word List below answer grid
         doc.setFontSize(12);
-        doc.text('Words found:', 20, gridY + gridSizeMM + 20);
+        let wordStartY = gridY + gridSizeMM + 15;
+        doc.text('Words found:', 20, wordStartY);
 
-        const wordsPerLine = 3;
+        wordStartY += 10;
         let currentX = 20;
-        let currentY = gridY + gridSizeMM + 30;
+        let currentY = wordStartY;
+        const maxWidth = doc.internal.pageSize.getWidth() - 20;
+        const spacing = 10;
 
-        puzzle.words.forEach((word, i) => {
-            if (i > 0 && i % wordsPerLine === 0) {
+        puzzle.words.forEach((word) => {
+            const wordText = word.toUpperCase();
+            const wordWidth = doc.getTextWidth(wordText);
+
+            if (currentX + wordWidth > maxWidth) {
                 currentX = 20;
-                currentY += 15;
+                currentY += 10;
             }
 
-            const wordUpper = word.toUpperCase();
-            const wordWidth = doc.getTextWidth(wordUpper) + 10;
-
             doc.setFillColor(230, 230, 230);
-            doc.roundedRect(currentX, currentY - 8, wordWidth, 12, 6, 6, 'F');
-
+            doc.roundedRect(currentX - 2, currentY - 7, wordWidth + 6, 10, 3, 3, 'F');
             doc.setTextColor(0, 0, 0);
-            doc.text(wordUpper, currentX + 5, currentY);
-
-            currentX += wordWidth + 10;
+            doc.text(wordText, currentX + 1, currentY);
+            currentX += wordWidth + spacing + 6;
         });
     });
 
     doc.save('word-search-puzzles.pdf');
 }
-        }
-    </script>
+</script>
+
 <p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;display:inline-block;margin-right:3px;filter:brightness(0) invert(1);"><a href="https://enzostvs-deepsite.hf.space" style="color: #fff;text-decoration: underline;" target="_blank" >DeepSite</a> - 🧬 <a href="https://enzostvs-deepsite.hf.space?remix=MusicHarry/king" style="color: #fff;text-decoration: underline;" target="_blank" >Remix</a></p></body>
 </html>
