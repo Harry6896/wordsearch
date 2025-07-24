@@ -540,6 +540,173 @@ async function exportToPDF() {
     doc.save('word-search-puzzles.pdf');
 }
 
+// ==================== API ENDPOINT FOR N8N INTEGRATION ====================
+// Add this code just before the closing </script> tag
+
+// API endpoint handler for n8n integration
+window.apiEndpoint = async function(requestData) {
+    try {
+        // Set grid size if provided
+        if (requestData.gridSize) {
+            document.getElementById('gridSizeInput').value = requestData.gridSize;
+            updateGridSize();
+        }
+        
+        // Set CSV data
+        document.getElementById('csvInput').value = requestData.csv;
+        
+        // Generate puzzles
+        generatePuzzles();
+        
+        // Generate PDF and return as base64
+        const pdfBase64 = await generatePdfBase64();
+        
+        return {
+            success: true,
+            pdfBase64: pdfBase64,
+            message: 'PDF generated successfully',
+            wordCount: puzzles.reduce((total, puzzle) => total + puzzle.words.length, 0),
+            puzzleCount: puzzles.length
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+};
+
+// Modified PDF generation that returns base64 instead of downloading
+function generatePdfBase64() {
+    return new Promise((resolve, reject) => {
+        try {
+            if (puzzles.length === 0) {
+                reject(new Error('No puzzles to export!'));
+                return;
+            }
+            
+            // Get selected format (fixing the selector issue)
+            const formatSelect = document.getElementById('kdpFormatSelect');
+            const format = formatSelect ? formatSelect.value : '8.5x11';
+            
+            let pageWidth, pageHeight;
+            switch (format) {
+                case '8.5x11':
+                    pageWidth = 8.5 * 25.4;
+                    pageHeight = 11 * 25.4;
+                    break;
+                case '6x9':
+                    pageWidth = 6 * 25.4;
+                    pageHeight = 9 * 25.4;
+                    break;
+                case '8x10':
+                    pageWidth = 8 * 25.4;
+                    pageHeight = 10 * 25.4;
+                    break;
+                case '7x10':
+                    pageWidth = 7 * 25.4;
+                    pageHeight = 10 * 25.4;
+                    break;
+                case '8.25x11':
+                    pageWidth = 8.25 * 25.4;
+                    pageHeight = 11 * 25.4;
+                    break;
+                default:
+                    pageWidth = 8.5 * 25.4;
+                    pageHeight = 11 * 25.4;
+            }
+            
+            const doc = new jspdf.jsPDF({
+                unit: 'mm',
+                format: [pageWidth, pageHeight]
+            });
+            
+            const margin = 12.7;
+            const gridSizeMM = pageWidth - (2 * margin);
+            const cellSize = gridSizeMM / gridSize;
+            const gridX = margin;
+            const gridYStart = 30;
+            
+            // Generate PDF content (same logic as your exportToPDF function)
+            puzzles.forEach((puzzle, i) => {
+                if (i > 0) doc.addPage();
+                let currentY = gridYStart;
+                const gridY = currentY;
+                doc.setFontSize(18);
+                doc.text(`Puzzle #${i + 1}`, pageWidth / 2, currentY, { align: 'center' });
+                currentY += 20;
+                
+                // Draw letters
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                for (let y = 0; y < gridSize; y++) {
+                    for (let x = 0; x < gridSize; x++) {
+                        doc.text(
+                            puzzle.grid[y][x],
+                            gridX + x * cellSize + cellSize / 2,
+                            gridY + y * cellSize + cellSize / 2 + 3,
+                            { align: 'center' }
+                        );
+                    }
+                }
+                
+                currentY += gridSizeMM + 10;
+                
+                // Draw word list
+                doc.setFontSize(16);
+                const wordsPerLine = 5;
+                let wordLines = [];
+                const sortedWords = [...puzzle.words].sort();
+                for (let j = 0; j < sortedWords.length; j += wordsPerLine) {
+                    wordLines.push(sortedWords.slice(j, j + wordsPerLine).join('    '));
+                }
+                const wordListY = gridY + gridSizeMM + 25;
+                doc.text(wordLines, pageWidth / 2, wordListY, { align: 'center', lineHeightFactor: 2 });
+            });
+            
+            // Add answer pages
+            puzzles.forEach((puzzle, i) => {
+                doc.addPage();
+                let currentY = gridYStart;
+                const gridY = currentY;
+                doc.setFontSize(18);
+                doc.text(`Puzzle #${i + 1} Answer Key`, pageWidth / 2, currentY, { align: 'center' });
+                currentY += 20;
+                
+                // Draw answer capsules
+                puzzle.placements.forEach(({ word, x, y, dir }) => {
+                    const startX = gridX + x * cellSize + cellSize / 2;
+                    const startY = gridY + y * cellSize + cellSize / 2;
+                    const endX = startX + (word.length - 1) * dir.x * cellSize;
+                    const endY = startY + (word.length - 1) * dir.y * cellSize;
+                    drawCapsule(doc, startX, startY, endX, endY, cellSize * 0.5);
+                });
+                
+                // Draw letters again over highlights
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                for (let y = 0; y < gridSize; y++) {
+                    for (let x = 0; x < gridSize; x++) {
+                        doc.text(
+                            puzzle.grid[y][x],
+                            gridX + x * cellSize + cellSize / 2,
+                            gridY + y * cellSize + cellSize / 2 + 3,
+                            { align: 'center' }
+                        );
+                    }
+                }
+            });
+            
+            // Convert to base64
+            const pdfData = doc.output('datauristring');
+            const base64Data = pdfData.split(',')[1]; // Remove application/pdf;base64, prefix
+            resolve(base64Data);
+            
+        } catch (error) {
+            reject(error);
+        }
+    });
+};
     </script>
 </body>
 </html>
